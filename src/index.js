@@ -1,25 +1,13 @@
+import fetch from "cross-fetch";
 export default class SDK {
   // Constants
   static INITIATE_PATH = "/v1/client/user/session/initiate";
   static VALIDATE_PATH = "/v1/client/user/session/validate";
-  static QR_CODE_DOM_ID = "otpless_qr_code";
-  static LOGIN_WITH_WA_DOM_ID = "otpless_button";
+  static HEALTH_CHECK = "/healthcheck";
   static STATE_LOCAL_STORAGE_KEY = "OTPless_state";
-  static TOKEN_LOCAL_STORAGE_KEY = "OTPless_token";
-  static MOBILE = "MOBILE";
-  static DESKTOP = "DESKTOP";
-  static TABLET = "TABLET";
-  static MAX_COUNT_QR_POLLING = 4;
-  static TIMEOUT = 300000;
-  static DISPLAY_TYPE = "none";
 
   constructor({ appId, url } = {}) {
-    this.isBroswer = this.isBrowser();
-    if (!this.isBroswer) {
-      throw new Error(
-        "window object is missing. Please use the SDK in a browser environment"
-      );
-    }
+    this.isBrowser = this.getIsBrowser();
     if (!appId) {
       throw new Error("appId not found");
     }
@@ -28,22 +16,31 @@ export default class SDK {
     }
     this.url = url;
     this.appId = appId;
-
-    this.qrPollingId = null;
-    this.deviceType = this.getDeviceType();
-    this.isMobile = this.getIsMobile();
+    this.state = null;
   }
 
+  getIsBrowser = () => {
+    return typeof window !== "undefined" ? true : false;
+  };
+
   cleanUpLocalStorage = () => {
-    localStorage.removeItem(SDK.STATE_LOCAL_STORAGE_KEY);
-    localStorage.removeItem(SDK.TOKEN_LOCAL_STORAGE_KEY);
+    if (this.isBrowser) {
+      localStorage.removeItem(SDK.STATE_LOCAL_STORAGE_KEY);
+    }
   };
 
   healthcheck = async () => {
-    await fetch(this.url + "/healthcheck").then((res) => {
+    return await fetch(this.url + SDK.HEALTH_CHECK).then((res) => {
+      if (res.ok) {
+        return "OK";
+      }
       if (res.status >= 400 && res.status <= 499) {
         throw new Error(
           `Encountered ${res.status} while performing healthcheck. Please check the appId and the url`
+        );
+      } else {
+        throw new Error(
+          `Encountered ${res.status} while performing healthcheck.`
         );
       }
     });
@@ -60,97 +57,56 @@ export default class SDK {
     return result;
   };
 
-  isBrowser = () => {
-    return typeof window !== "undefined" ? true : false;
+  getTokenFromQueryParams = () => {
+    if (this.isBrowser) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("token");
+    }
   };
 
-  getDeviceType = () => {
-    let hasTouchScreen = false;
-    if ("maxTouchPoints" in navigator) {
-      hasTouchScreen = navigator?.maxTouchPoints > 0;
-    } else if ("msMaxTouchPoints" in navigator) {
-      hasTouchScreen = navigator?.msMaxTouchPoints > 0;
-    } else {
-      const mQ = matchMedia?.("(pointer:coarse)");
-      if (mQ?.media === "(pointer:coarse)") {
-        hasTouchScreen = !!mQ.matches;
-      } else if ("orientation" in window) {
-        hasTouchScreen = true; // deprecated, but good fallback
-      }
-    }
-    if (!hasTouchScreen) {
-      return SDK.DESKTOP;
-    }
-    const UA = navigator.userAgent;
-    let isAppleTablet = false;
-    isAppleTablet = /\b(iPad|iPod)\b/i.test(UA);
-    if (isAppleTablet) {
-      return SDK.TABLET;
-    }
-
-    let isMobile = /\b(mobile)\b/i.test(UA);
-
-    let isAndroid = /\b(android)\b/i.test(UA);
-    if (isMobile) {
-      return SDK.MOBILE;
-    } else if (isAndroid) {
-      return SDK.TABLET;
-    }
-
-    return SDK.DESKTOP;
-  };
-
-  getIsMobile = () => {
-    return this.deviceType === SDK.MOBILE;
-  };
-
-  initiate = ({ redirectionUrl } = {}) => {
-    try {
-      const previousOnload = window.onload;
-      this.cleanValidation();
-      window.onload = async () => {
-        if (previousOnload) {
-          previousOnload();
-        }
-        if (this.isBrowser) {
-          const button = document.getElementById(SDK.LOGIN_WITH_WA_DOM_ID);
-          const img = document.getElementById(SDK.QR_CODE_DOM_ID);
-          if (this.isMobile) {
-            img.style.display = SDK.DISPLAY_TYPE;
-            button.onclick = this.createOnClick(redirectionUrl);
-          } else {
-            button.style.display = SDK.DISPLAY_TYPE;
-            const getQr = this.getQR({ redirectionUrl });
-            getQr();
-            this.qrPollingId = window.setInterval(getQr, SDK.TIMEOUT);
-          }
-        }
+  validateToken = async (token) => {
+    if (token) {
+      const clientState = localStorage.getItem(SDK.STATE_LOCAL_STORAGE_KEY);
+      const bodyParams = {
+        token,
+        state: clientState,
       };
-    } catch (e) {
-      console.error(`ERROR: ${e}`);
+      const options = {
+        method: "POST",
+        headers: { "Content-Type": "application/json", appId: this.appId },
+        body: JSON.stringify(bodyParams),
+      };
+      const isValidated = await fetch(
+        this.url + SDK.VALIDATE_PATH,
+        options
+      ).then((res) => {
+        if (res.ok) {
+          return true;
+        }
+        return false;
+      });
+
+      if (isValidated) {
+        return { isValidated: true, token };
+      }
+      return { isValidated: false, token: null };
     }
   };
 
-  clearInitate = () => {
-    clearInterval(this.qrPollingId);
+  getState = () => {
+    return this.isBrowser
+      ? localStorage.getItem(SDK.STATE_LOCAL_STORAGE_KEY)
+      : this.state;
   };
 
-  startValidation = () => {
-    if (this.isMobile) {
-      return this.validateMobile();
-    }
-    return this.validatePolling();
-  };
-
-  validateMobile = async () => {
-    if (this.isBroswer && this.isMobile) {
+  startValidation = async () => {
+    if (this.isBrowser) {
       const params = new URLSearchParams(window.location.search);
 
-      const clientState = localStorage.getItem("OTPless_state");
+      const clientState = localStorage.getItem(SDK.STATE_LOCAL_STORAGE_KEY);
 
       if (params.has("token")) {
         const token = params.get("token");
-        console.log(token);
         const bodyParams = {
           token,
           state: clientState,
@@ -171,137 +127,57 @@ export default class SDK {
         });
 
         if (isValidated) {
+          this.cleanUpLocalStorage();
           return Promise.resolve({ isValidated: true, token });
         }
         return Promise.resolve({ isValidated: false, token: null });
       }
     }
+    return Promise.resolve({ isValidated: false, token: null });
   };
 
-  validatePolling = async () => {
-    if (this.isBrowser && !this.isMobile) {
-      let attempts = 0;
-      const as = async (resolve, reject) => {
-        const token = localStorage.getItem("OTPless_token");
-        const clientState = localStorage.getItem("OTPless_state");
-        if (token) {
-          const bodyParams = {
-            token,
-            state: clientState,
-          };
-
-          const options = {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              appId: this.appId,
-            },
-            body: JSON.stringify(bodyParams),
-          };
-          const isValidated = await fetch(this.url + SDK.VALIDATE_PATH, options)
-            .then((res) => {
-              if (res.ok) {
-                return true;
-              } else if (res.status >= 500) {
-                console.error(
-                  `ERROR: ${res.status} while validating token. ${res.statusText}`
-                );
-              }
-              return false;
-            })
-            .catch(() => {
-              return false;
-            });
-
-          if (isValidated) {
-            return resolve({ isValidated: true, token });
-          } else if (attempts > 10) {
-            return reject({ isValidated: false, token: null });
-          }
-          attempts++;
-        }
-        setTimeout(as, 5000, resolve, reject);
-      };
-      return new Promise(as);
-    }
-    return { isValidated: false, token: null };
-  };
-
-  cleanValidation = () => {
-    this.cleanUpLocalStorage();
-  };
-
-  getQR = ({ redirectionUrl }) => {
-    let pollingCount = 0;
-    let shouldReferesh = false;
-    return async () => {
-      if (pollingCount < SDK.MAX_COUNT_QR_POLLING) {
-        const data = await this.getData({ redirectionUrl });
-        if (data && data.intent) {
-          document.getElementById(SDK.QR_CODE_DOM_ID).src = data && data.intent;
-          data && localStorage.setItem("OTPless_token", data.token);
-          pollingCount++;
-        }
-      } else if (
-        pollingCount === SDK.MAX_COUNT_QR_POLLING &&
-        shouldReferesh === false
-      ) {
-        const node = document.getElementById(SDK.QR_CODE_DOM_ID);
-        node.src =
-          "https://user-images.githubusercontent.com/46546412/124144853-90b23d00-da49-11eb-9f8c-4bbf28f74b3c.png";
-        node.onclick = () => {
-          pollingCount = 0;
-          shouldReferesh = false;
-        };
-        shouldReferesh = true;
-      }
+  getData = async function ({ redirectionURL } = {}) {
+    const clientState = this.makeState(5);
+    const bodyParams = {
+      loginMethod: "WHATSAPP",
+      state: clientState,
+      expiryTime: 30,
+      redirectionURL,
     };
-  };
+    const options = {
+      method: "POST",
+      headers: { "Content-Type": "application/json", appId: this.appId },
+      body: JSON.stringify(bodyParams),
+    };
 
-  getData = async function ({ redirectionUrl } = {}) {
-    if (this.isBrowser) {
-      const clientState = this.makeState(5);
-      const bodyParams = {
-        loginMethod: "WHATSAPP",
-        state: clientState,
-        expiryTime: 30,
-        redirectionUrl,
-        deviceType: this.deviceType,
-      };
-      const options = {
-        method: "POST",
-        headers: { "Content-Type": "application/json", appId: this.appId },
-        body: JSON.stringify(bodyParams),
-      };
-
-      const data = await fetch(this.url + SDK.INITIATE_PATH, options)
-        .then((res) => {
-          if (res.ok) {
-            localStorage.setItem("OTPless_state", clientState);
-            return res.json();
-          }
-          throw new Error(`${res.status} occured while fetching whatsApp intent. ${res.statusText}
+    const data = await fetch(this.url + SDK.INITIATE_PATH, options)
+      .then((res) => {
+        if (res.ok) {
+          this.isBrowser &&
+            localStorage.setItem(SDK.STATE_LOCAL_STORAGE_KEY, clientState);
+          this.state = clientState;
+          return res.json();
+        }
+        throw new Error(`${res.status} occured while fetching whatsApp intent. ${res.statusText}
           `);
-        })
-        .then((res) => {
-          const { data } = res;
-          return data;
-        })
-        .catch((error) => {
-          console.error(error);
-          return null;
-        });
-      return data;
-    }
+      })
+      .then((res) => {
+        const { data } = res;
+        return data;
+      })
+      .catch((error) => {
+        console.error(error);
+        return null;
+      });
+    return data;
   };
 
-  createOnClick = (redirectionUrl) => {
-    if (this.isBrowser) {
-      return async () => {
-        const data = await this.getData({ redirectionUrl });
-        const intent = data && data.intent;
-        intent && window.location.replace(intent);
-      };
-    }
+  getIntent = ({ redirectionURL } = {}) => {
+    return async () => {
+      this.cleanUpLocalStorage();
+      const data = await this.getData({ redirectionURL });
+      const intent = data && data.intent;
+      return intent;
+    };
   };
 }
