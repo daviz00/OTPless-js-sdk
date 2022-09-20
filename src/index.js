@@ -209,7 +209,6 @@ export default class SDK {
     const data = await fetch(this.url + SDK.USER_DATA, options)
       .then((res) => {
         if (res.ok) {
-          console.log(res.json());
           return res.json();
         }
         throw new Error(`${res.status} while fetching user data. ${res.statusText}
