@@ -66,7 +66,7 @@ export default class SDK {
     return null;
   };
 
-  validateToken = async ({ token, state }) => {
+  validateToken = async ({ token, state } = {}) => {
     if (token) {
       const clientState = state;
       const bodyParams = {
@@ -183,7 +183,7 @@ export default class SDK {
     return data;
   };
 
-  getIntent = ({ redirectionURL } = {}) => {
+  createGetIntent = ({ redirectionURL } = {}) => {
     return async () => {
       this.cleanUpLocalStorage();
       const data = await this.getData({ redirectionURL });
@@ -192,7 +192,17 @@ export default class SDK {
     };
   };
 
-  getUserData = async ({ appSecret, token }) => {
+  getUserData = async ({ appSecret, token } = {}) => {
+    if (!token) {
+      console.error("Token is missing in getUserData");
+      return null;
+    }
+
+    if (!appSecret) {
+      console.error("appSecret is missing in getUserData");
+      return null;
+    }
+
     const bodyParams = {
       token,
     };
