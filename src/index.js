@@ -5,6 +5,7 @@ export default class SDK {
   static VALIDATE_PATH = "/v1/client/user/session/validate";
   static HEALTH_CHECK = "/healthcheck";
   static STATE_LOCAL_STORAGE_KEY = "OTPless_state";
+  static USER_DATA = "/v1/client/user/session/userdata";
 
   constructor({ appId, url } = {}) {
     this.isBrowser = this.getIsBrowser();
@@ -62,11 +63,12 @@ export default class SDK {
       const params = new URLSearchParams(window.location.search);
       return params.get("token");
     }
+    return null;
   };
 
-  validateToken = async (token) => {
+  validateToken = async ({ token, state }) => {
     if (token) {
-      const clientState = localStorage.getItem(SDK.STATE_LOCAL_STORAGE_KEY);
+      const clientState = state;
       const bodyParams = {
         token,
         state: clientState,
@@ -76,21 +78,26 @@ export default class SDK {
         headers: { "Content-Type": "application/json", appId: this.appId },
         body: JSON.stringify(bodyParams),
       };
-      const isValidated = await fetch(
-        this.url + SDK.VALIDATE_PATH,
-        options
-      ).then((res) => {
-        if (res.ok) {
-          return true;
-        }
-        return false;
-      });
+      const isValidated = await fetch(this.url + SDK.VALIDATE_PATH, options)
+        .then((res) => {
+          if (res.ok) {
+            return res.json();
+          }
+          return false;
+        })
+        .then((res) => {
+          if (res && res.responseCode >= 200 && res.responseCode <= 299) {
+            return true;
+          }
+          return false;
+        });
 
       if (isValidated) {
-        return { isValidated: true, token };
+        return Promise.resolve({ isValidated: true, token });
       }
-      return { isValidated: false, token: null };
+      return Promise.resolve({ isValidated: false, token: null });
     }
+    Promise.resolve({ isValidated: false, token: null });
   };
 
   getState = () => {
@@ -116,15 +123,19 @@ export default class SDK {
           headers: { "Content-Type": "application/json", appId: this.appId },
           body: JSON.stringify(bodyParams),
         };
-        const isValidated = await fetch(
-          this.url + SDK.VALIDATE_PATH,
-          options
-        ).then((res) => {
-          if (res.ok) {
-            return true;
-          }
-          return false;
-        });
+        const isValidated = await fetch(this.url + SDK.VALIDATE_PATH, options)
+          .then((res) => {
+            if (res.ok) {
+              return res.json();
+            }
+            return false;
+          })
+          .then((res) => {
+            if (res && res.responseCode >= 200 && res.responseCode <= 299) {
+              return true;
+            }
+            return false;
+          });
 
         if (isValidated) {
           this.cleanUpLocalStorage();
@@ -158,7 +169,7 @@ export default class SDK {
           this.state = clientState;
           return res.json();
         }
-        throw new Error(`${res.status} occured while fetching whatsApp intent. ${res.statusText}
+        throw new Error(`${res.status}  while fetching whatsApp intent. ${res.statusText}
           `);
       })
       .then((res) => {
@@ -179,5 +190,39 @@ export default class SDK {
       const intent = data && data.intent;
       return intent;
     };
+  };
+
+  getUserData = async ({ appSecret, token }) => {
+    const bodyParams = {
+      token,
+    };
+    const options = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        appId: this.appId,
+        appSecret,
+      },
+      body: JSON.stringify(bodyParams),
+    };
+
+    const data = await fetch(this.url + SDK.USER_DATA, options)
+      .then((res) => {
+        if (res.ok) {
+          console.log(res.json());
+          return res.json();
+        }
+        throw new Error(`${res.status} while fetching user data. ${res.statusText}
+          `);
+      })
+      .then((res) => {
+        const { data } = res;
+        return data;
+      })
+      .catch((error) => {
+        console.error(error);
+        return null;
+      });
+    return data;
   };
 }
