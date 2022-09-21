@@ -6,19 +6,27 @@ export default class SDK {
   static HEALTH_CHECK = "/healthcheck";
   static STATE_LOCAL_STORAGE_KEY = "OTPless_state";
   static USER_DATA = "/v1/client/user/session/userdata";
+  static URL = "https://api.otpless.app";
 
-  constructor({ appId, url } = {}) {
+  constructor({ appId, enableErrorLogging = false } = {}) {
     this.isBrowser = this.getIsBrowser();
     if (!appId) {
       throw new Error("appId not found");
     }
-    if (!url) {
-      throw new Error("No url provided for the api in the constructor");
-    }
-    this.url = url;
     this.appId = appId;
     this.state = null;
+    this.enableErrorLogging = enableErrorLogging;
   }
+
+  log = ({ responseCode, message, location }) => {
+    if (!this.enableErrorLogging) {
+      return;
+    }
+    console.error({
+      errorMessage: `${message} (${location} in otpless-js-sdk.js)`,
+      responseCode,
+    });
+  };
 
   getIsBrowser = () => {
     return typeof window !== "undefined" ? true : false;
@@ -31,20 +39,22 @@ export default class SDK {
   };
 
   healthcheck = async () => {
-    return await fetch(this.url + SDK.HEALTH_CHECK).then((res) => {
-      if (res.ok) {
-        return "OK";
-      }
-      if (res.status >= 400 && res.status <= 499) {
-        throw new Error(
-          `Encountered ${res.status} while performing healthcheck. Please check the appId and the url`
-        );
-      } else {
-        throw new Error(
-          `Encountered ${res.status} while performing healthcheck.`
-        );
-      }
-    });
+    return await fetch(SDK.URL + SDK.HEALTH_CHECK)
+      .then((res) => {
+        if (res.ok) {
+          return "OK";
+        }
+        if (res.status >= 400 && res.status <= 499) {
+          this.log();
+        } else {
+          throw new Error(
+            `Encountered ${res.status} while performing healthcheck.`
+          );
+        }
+      })
+      .catch((e) => {
+        throw new Error(e);
+      });
   };
 
   makeState = (length) => {
@@ -58,12 +68,32 @@ export default class SDK {
     return result;
   };
 
+  getState = () => {
+    return this.isBrowser
+      ? localStorage.getItem(SDK.STATE_LOCAL_STORAGE_KEY)
+      : this.state;
+  };
+
   getTokenFromQueryParams = () => {
     if (this.isBrowser) {
       const params = new URLSearchParams(window.location.search);
       return params.get("token");
     }
     return null;
+  };
+
+  httpHandler = async (url, options) => {
+    return await fetch(url, options)
+      .then((res) => {
+        return res.json() || {};
+      })
+      .then((res) => {
+        return res;
+      })
+      .catch((e) => {
+        this.log(e);
+        return {};
+      });
   };
 
   validateToken = async ({ token, state } = {}) => {
@@ -78,32 +108,24 @@ export default class SDK {
         headers: { "Content-Type": "application/json", appId: this.appId },
         body: JSON.stringify(bodyParams),
       };
-      const isValidated = await fetch(this.url + SDK.VALIDATE_PATH, options)
-        .then((res) => {
-          if (res.ok) {
-            return res.json();
-          }
-          return false;
-        })
-        .then((res) => {
-          if (res && res.responseCode >= 200 && res.responseCode <= 299) {
-            return true;
-          }
-          return false;
-        });
+      const validationResponse = await this.httpHandler(
+        SDK.URL + SDK.VALIDATE_PATH,
+        options
+      ).then(({ responseCode, message, data }) => {
+        if (responseCode >= 200 && responseCode <= 299) {
+          this.cleanUpLocalStorage();
+          return {
+            token,
+            stateMatched: data && data.stateMatched,
+          };
+        }
+        this.log({ responseCode, message, location: "validateToken" });
+        return { token: null, stateMatched: false };
+      });
 
-      if (isValidated) {
-        return Promise.resolve({ isValidated: true, token });
-      }
-      return Promise.resolve({ isValidated: false, token: null });
+      return Promise.resolve(validationResponse);
     }
-    Promise.resolve({ isValidated: false, token: null });
-  };
-
-  getState = () => {
-    return this.isBrowser
-      ? localStorage.getItem(SDK.STATE_LOCAL_STORAGE_KEY)
-      : this.state;
+    Promise.resolve({ token: null, stateMatched: false });
   };
 
   startValidation = async () => {
@@ -123,35 +145,48 @@ export default class SDK {
           headers: { "Content-Type": "application/json", appId: this.appId },
           body: JSON.stringify(bodyParams),
         };
-        const isValidated = await fetch(this.url + SDK.VALIDATE_PATH, options)
-          .then((res) => {
-            if (res.ok) {
-              return res.json();
-            }
-            return false;
-          })
-          .then((res) => {
-            if (res && res.responseCode >= 200 && res.responseCode <= 299) {
-              return true;
-            }
-            return false;
-          });
+        const validationResponse = await this.httpHandler(
+          SDK.URL + SDK.VALIDATE_PATH,
+          options
+        ).then(({ responseCode, message, data }) => {
+          if (responseCode >= 200 && responseCode <= 299) {
+            this.cleanUpLocalStorage();
+            return {
+              token,
+              stateMatched: data && data.stateMatched,
+            };
+          }
+          this.log({ responseCode, message, location: "startValidation" });
+          return { token: null, stateMatched: false };
+        });
 
-        if (isValidated) {
-          this.cleanUpLocalStorage();
-          return Promise.resolve({ isValidated: true, token });
-        }
-        return Promise.resolve({ isValidated: false, token: null });
+        return Promise.resolve(validationResponse);
       }
     }
-    return Promise.resolve({ isValidated: false, token: null });
+    return Promise.resolve({ token: null, stateMatched: false });
   };
 
-  getData = async function ({ redirectionURL } = {}) {
-    const clientState = this.makeState(5);
+  createGetIntent = ({ redirectionURL } = {}) => {
+    return async () => {
+      this.cleanUpLocalStorage();
+      const state = this.makeState(5);
+      this.isBrowser &&
+        localStorage.setItem(SDK.STATE_LOCAL_STORAGE_KEY, state);
+      this.state = state;
+
+      const data = await this.getData({
+        redirectionURL,
+        state,
+      });
+      const intent = data && data.intent;
+      return intent;
+    };
+  };
+
+  getData = async function ({ redirectionURL, state } = {}) {
     const bodyParams = {
       loginMethod: "WHATSAPP",
-      state: clientState,
+      state,
       expiryTime: 30,
       redirectionURL,
     };
@@ -161,35 +196,18 @@ export default class SDK {
       body: JSON.stringify(bodyParams),
     };
 
-    const data = await fetch(this.url + SDK.INITIATE_PATH, options)
-      .then((res) => {
-        if (res.ok) {
-          this.isBrowser &&
-            localStorage.setItem(SDK.STATE_LOCAL_STORAGE_KEY, clientState);
-          this.state = clientState;
-          return res.json();
-        }
-        throw new Error(`${res.status}  while fetching whatsApp intent. ${res.statusText}
-          `);
-      })
-      .then((res) => {
-        const { data } = res;
+    const data = await this.httpHandler(
+      SDK.URL + SDK.INITIATE_PATH,
+      options
+    ).then(({ responseCode, message, data }) => {
+      if (responseCode >= 200 && responseCode <= 299) {
         return data;
-      })
-      .catch((error) => {
-        console.error(error);
-        return null;
-      });
-    return data;
-  };
+      }
+      this.log({ responseCode, message, location: "createGetIntent" });
+      return null;
+    });
 
-  createGetIntent = ({ redirectionURL } = {}) => {
-    return async () => {
-      this.cleanUpLocalStorage();
-      const data = await this.getData({ redirectionURL });
-      const intent = data && data.intent;
-      return intent;
-    };
+    return data;
   };
 
   getUserData = async ({ appSecret, token } = {}) => {
@@ -216,22 +234,15 @@ export default class SDK {
       body: JSON.stringify(bodyParams),
     };
 
-    const data = await fetch(this.url + SDK.USER_DATA, options)
-      .then((res) => {
-        if (res.ok) {
-          return res.json();
+    const data = await this.httpHandler(SDK.URL + SDK.USER_DATA, options).then(
+      ({ responseCode, message, data }) => {
+        if (responseCode >= 200 && responseCode <= 299) {
+          return data;
         }
-        throw new Error(`${res.status} while fetching user data. ${res.statusText}
-          `);
-      })
-      .then((res) => {
-        const { data } = res;
-        return data;
-      })
-      .catch((error) => {
-        console.error(error);
+        this.log({ responseCode, message, location: "getUserData" });
         return null;
-      });
+      }
+    );
     return data;
   };
 }
