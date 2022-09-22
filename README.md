@@ -29,7 +29,10 @@ Otpless-js-sdk is a JS SDK used for authenticating users using WhatsApp. The SDK
 3.  Perform health-check while developing to see if the API is working fine.
 
     ```sh
-    otplessSdk.healthcheck().then((res)=>{console.log(res)});
+    otplessSdk.healthcheck().then((res)=>{
+        console.log(res)
+        }
+    );
     ```
 
 4.  Call `createGetIntent` method and pass redirectionURL as one of the object properties. Create an onClick function and call the function returned by `createGetIntent`.
