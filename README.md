@@ -27,6 +27,7 @@ Otpless-js-sdk is a JS SDK used for authenticating users using WhatsApp. The SDK
 
     ```sh
     //client side application
+
     const getIntent=otplessSdk.getIntent({
     redirectionURL: YOUR_WEBSITE_URL, });
 
@@ -37,12 +38,13 @@ Otpless-js-sdk is a JS SDK used for authenticating users using WhatsApp. The SDK
     };
 
     //server side application
+
     const getIntent=otplessSdk.getIntent({
     redirectionURL: YOUR_WEBSITE_URL, });
     const intent=getIntent();
     const state=otplessSdk.getState()
 
-    //Pass the `intent` and `state` to client. Redirect the client to the intent URI and save the state in the local storage.
+    //Pass the `intent` and `state` to client. Redirect the client to the intent URI and save the state in the cookie/local_storage.
 
     ```
 
@@ -67,11 +69,13 @@ Otpless-js-sdk is a JS SDK used for authenticating users using WhatsApp. The SDK
     ```sh
 
     //client side
+
      const token=otplessSdk.getTokenFromQueryParams();
     // send the token and the state that was earlier generated to the server side
 
 
      //server side
+
       otplessSdk.validateToken({token,"STATE"}).then(({stateMatched,token}) => {
          // if token is not null, user has been authenticated successfully
         }
