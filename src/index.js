@@ -8,7 +8,7 @@ export default class SDK {
   static USER_DATA = "/v1/client/user/session/userdata";
   static URL = "https://api.otpless.app";
 
-  constructor({ appId, enableErrorLogging = false } = {}) {
+  constructor({ appId, enableErrorLogging = false, url } = {}) {
     this.isBrowser = this.getIsBrowser();
     if (!appId) {
       throw new Error("appId not found");
@@ -16,6 +16,7 @@ export default class SDK {
     this.appId = appId;
     this.state = null;
     this.enableErrorLogging = enableErrorLogging;
+    this.url = url || SDK.URL;
   }
 
   log = ({ responseCode, message, location }) => {
@@ -39,7 +40,7 @@ export default class SDK {
   };
 
   healthcheck = async () => {
-    return await fetch(SDK.URL + SDK.HEALTH_CHECK)
+    return await fetch(this.url + SDK.HEALTH_CHECK)
       .then((res) => {
         if (res.ok) {
           return "OK";
@@ -109,7 +110,7 @@ export default class SDK {
         body: JSON.stringify(bodyParams),
       };
       const validationResponse = await this.httpHandler(
-        SDK.URL + SDK.VALIDATE_PATH,
+        this.url + SDK.VALIDATE_PATH,
         options
       ).then(({ responseCode, message, data }) => {
         if (responseCode >= 200 && responseCode <= 299) {
@@ -146,7 +147,7 @@ export default class SDK {
           body: JSON.stringify(bodyParams),
         };
         const validationResponse = await this.httpHandler(
-          SDK.URL + SDK.VALIDATE_PATH,
+          this.url + SDK.VALIDATE_PATH,
           options
         ).then(({ responseCode, message, data }) => {
           if (responseCode >= 200 && responseCode <= 299) {
@@ -166,7 +167,7 @@ export default class SDK {
     return Promise.resolve({ token: null, stateMatched: false });
   };
 
-  createGetIntent = ({ redirectionURL } = {}) => {
+  createGetIntent = ({ redirectionURL, orderId } = {}) => {
     return async () => {
       this.cleanUpLocalStorage();
       const state = this.makeState(5);
@@ -177,18 +178,20 @@ export default class SDK {
       const data = await this.getData({
         redirectionURL,
         state,
+        orderId,
       });
       const intent = data && data.intent;
       return intent;
     };
   };
 
-  getData = async function ({ redirectionURL, state } = {}) {
+  getData = async function ({ redirectionURL, state, orderId } = {}) {
     const bodyParams = {
       loginMethod: "WHATSAPP",
       state,
       expiryTime: 30,
       redirectionURL,
+      orderId,
     };
     const options = {
       method: "POST",
@@ -197,7 +200,7 @@ export default class SDK {
     };
 
     const data = await this.httpHandler(
-      SDK.URL + SDK.INITIATE_PATH,
+      this.url + SDK.INITIATE_PATH,
       options
     ).then(({ responseCode, message, data }) => {
       if (responseCode >= 200 && responseCode <= 299) {
@@ -234,7 +237,7 @@ export default class SDK {
       body: JSON.stringify(bodyParams),
     };
 
-    const data = await this.httpHandler(SDK.URL + SDK.USER_DATA, options).then(
+    const data = await this.httpHandler(this.url + SDK.USER_DATA, options).then(
       ({ responseCode, message, data }) => {
         if (responseCode >= 200 && responseCode <= 299) {
           return data;
