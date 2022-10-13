@@ -52,5 +52,4 @@ Otpless-js-sdk is a vanilla javascript SDK used for authenticating users using O
 
 MIT
 
-**Free Software, Hell Yeah!**
 Made with ❤️ by [OTPless](https://www.otpless.com)
