@@ -13,13 +13,15 @@ Otpless-js-sdk is a vanilla javascript SDK used for authenticating users using O
 1.  Install the otpless-js-sdk from the npm repository.
 
 ```sh
+
     npm i otpless-js-sdk
 ```
 
 2.  Initialize the sdk. `appId` is required. `enableErrorLogging` is an optional parameter. On setting it to true, the error logs are consoled to the stderr.
 
 ```sh
-   const sdkIntance = new otplessSdk(
+    import otplessSdk from "otpless-js-sdk";
+    const sdkIntance = new otplessSdk(
            {
                appId: "YOUR_APP_ID",
                enableErrorLogging: true
