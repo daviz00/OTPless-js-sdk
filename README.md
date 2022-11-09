@@ -33,7 +33,7 @@ Otpless-js-sdk is a vanilla javascript SDK used for authenticating users using O
 
 ```sh
    <button
-     onClick={test.createGetIntentOnClick({
+     onClick={sdkIntance.createGetIntentOnClick({
        redirectionURL: "YOUR_REDIRECTION_URL",
      })}
    >
