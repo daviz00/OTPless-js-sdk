@@ -4,7 +4,7 @@ import { getIsBrowser } from "./utils/get-is-browser";
 import { cleanUpLocalStorage } from "./utils/clean-local-storage";
 import { getData } from "./utils/get-data";
 
-const SDK = ({ appId = "", enableErrorLogging = false, url = URL }) => {
+const SDK = ({ appId, enableErrorLogging = false, url = URL }: any = {}) => {
   if (!getIsBrowser()) {
     throw new Error("window object not defined");
   }
@@ -29,7 +29,7 @@ const SDK = ({ appId = "", enableErrorLogging = false, url = URL }) => {
     return localStorage.getItem(STATE_LOCAL_STORAGE_KEY);
   };
 
-  const getIntent = ({ redirectionURL = "", orderId = "" }) => {
+  const getIntent = ({ redirectionURL, orderId }: any = {}) => {
     if (!getIsBrowser()) {
       return null;
     }
