@@ -12,7 +12,7 @@ export const getData = async ({
   state,
   orderId,
   enableErrorLogging,
-}) => {
+}: any = {}) => {
   if (!getIsBrowser()) {
     return null;
   }
