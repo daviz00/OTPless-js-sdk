@@ -6,7 +6,10 @@ import { getData } from "./utils/get-data";
 
 export default class SDK {
   isClicked = false;
-  constructor({ appId, enableErrorLogging = false, url } = {}) {
+  appId = "";
+  enableErrorLogging = false;
+  url = "";
+  constructor({ appId = "", enableErrorLogging = false, url = URL }) {
     if (!getIsBrowser()) {
       throw new Error("window object not defined");
     }
@@ -15,7 +18,7 @@ export default class SDK {
     }
     this.appId = appId;
     this.enableErrorLogging = enableErrorLogging;
-    this.url = url || URL;
+    this.url = url;
   }
 
   static getTokenFromQueryParams = () => {
@@ -33,7 +36,7 @@ export default class SDK {
     return localStorage.getItem(STATE_LOCAL_STORAGE_KEY);
   };
 
-  createGetIntentOnClick = ({ redirectionURL, orderId } = {}) => {
+  createGetIntentOnClick = ({ redirectionURL, orderId }) => {
     if (!getIsBrowser()) {
       return null;
     }

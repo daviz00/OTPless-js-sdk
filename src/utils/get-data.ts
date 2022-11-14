@@ -5,14 +5,14 @@ import { DEFAULT_EXPIRY_TIME } from "../constants";
 import { WHATSAPP } from "../constants";
 import { httpHandler } from "./http-handler";
 
-export const getData = async function ({
+export const getData = async ({
   url,
   appId,
   redirectionURL,
   state,
   orderId,
   enableErrorLogging,
-} = {}) {
+}) => {
   if (!getIsBrowser()) {
     return null;
   }
