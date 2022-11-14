@@ -29,7 +29,7 @@ const SDK = ({ appId = "", enableErrorLogging = false, url = URL }) => {
     return localStorage.getItem(STATE_LOCAL_STORAGE_KEY);
   };
 
-  const getIntent = ({ redirectionURL, orderId }) => {
+  const getIntent = ({ redirectionURL = "", orderId = "" }) => {
     if (!getIsBrowser()) {
       return null;
     }
