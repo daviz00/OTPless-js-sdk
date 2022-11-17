@@ -2,7 +2,8 @@
   "name": "otpless-js-sdk",
   "version": "2.0.2",
   "description": "SDK for authenticating users using WhatsApp",
-  "main": "dist/index.js",
+  "main": "dist/index.ts",
+  "types": "dist/index.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npx babel src --out-dir dist",
@@ -19,6 +20,7 @@
   "devDependencies": {
     "@babel/cli": "^7.18.10",
     "@babel/core": "^7.19.1",
-    "@babel/preset-env": "^7.19.1"
+    "@babel/preset-env": "^7.19.1",
+    "babel-cli": "^6.26.0"
   }
 }
