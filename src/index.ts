@@ -56,11 +56,7 @@ const OTPlessSdk = ({
         appId,
       });
       const intent = data && data.intent;
-      if (intent) {
-        location.replace(intent);
-      } else {
-        isClicked = false;
-      }
+      intent ? location.replace(intent) : (isClicked = false);
     };
   };
 

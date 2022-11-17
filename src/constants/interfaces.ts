@@ -4,9 +4,15 @@ export interface SdkParams {
   enableErrorLogging?: boolean;
 }
 
-export interface GetIntentParams {
+export interface GetIntentParams extends SdkParams {
   redirectionURL?: string;
   orderId?: string;
+  state?: string;
+}
+
+export interface HttpHandlerParams {
+  url: string;
+  options?: Object;
 }
 
 export interface LoggerParams {

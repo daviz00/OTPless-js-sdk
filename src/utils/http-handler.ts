@@ -1,4 +1,6 @@
-export const httpHandler = async (url: string, options: Object) => {
+import { HttpHandlerParams } from "../constants/interfaces";
+
+export const httpHandler = async ({ url, options }: HttpHandlerParams) => {
   return await fetch(url, options)
     .then((res) => {
       return res.json() || {};
