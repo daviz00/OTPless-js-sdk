@@ -1,4 +1,4 @@
-export const httpHandler = async (url, options) => {
+export const httpHandler = async (url:any, options:any) => {
   return await fetch(url, options)
     .then((res) => {
       return res.json() || {};

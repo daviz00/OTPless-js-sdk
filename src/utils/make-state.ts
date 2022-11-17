@@ -1,4 +1,4 @@
-export const makeState = (length) => {
+export const makeState = (length:any) => {
   var result = "";
   var characters =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
