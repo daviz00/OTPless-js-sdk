@@ -3,8 +3,13 @@ import { URL, STATE_LOCAL_STORAGE_KEY, TOKEN } from "./constants";
 import { getIsBrowser } from "./utils/get-is-browser";
 import { cleanUpLocalStorage } from "./utils/clean-local-storage";
 import { getData } from "./utils/get-data";
+import { GetIntentParams, SdkParams } from "./constants/interfaces";
 
-const SDK = ({ appId, enableErrorLogging = false, url = URL }: any = {}) => {
+const OTPlessSdk = ({
+  appId,
+  enableErrorLogging = false,
+  url = URL,
+}: SdkParams = {}) => {
   if (!getIsBrowser()) {
     throw new Error("window object not defined");
   }
@@ -29,7 +34,7 @@ const SDK = ({ appId, enableErrorLogging = false, url = URL }: any = {}) => {
     return localStorage.getItem(STATE_LOCAL_STORAGE_KEY);
   };
 
-  const getIntent = ({ redirectionURL, orderId }: any = {}) => {
+  const getIntent = ({ redirectionURL, orderId }: GetIntentParams = {}) => {
     if (!getIsBrowser()) {
       return null;
     }
@@ -66,7 +71,7 @@ const SDK = ({ appId, enableErrorLogging = false, url = URL }: any = {}) => {
   };
 };
 
-export default SDK;
+export default OTPlessSdk;
 
 // export default class SDK {
 //   isClicked = false;
