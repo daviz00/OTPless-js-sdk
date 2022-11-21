@@ -4,15 +4,16 @@ import { logger } from "./logger";
 import { DEFAULT_EXPIRY_TIME } from "../constants";
 import { WHATSAPP } from "../constants";
 import { httpHandler } from "./http-handler";
+import { GetIntentParams } from "../constants/interfaces";
 
-export const getData = async function ({
+export const getData = async ({
   url,
   appId,
   redirectionURL,
   state,
   orderId,
   enableErrorLogging,
-} = {}) {
+}: GetIntentParams = {}) => {
   if (!getIsBrowser()) {
     return null;
   }
@@ -29,23 +30,24 @@ export const getData = async function ({
     body: JSON.stringify(bodyParams),
   };
 
-  const data = await httpHandler(url + GET_INTENT_ENDPOINT, options).then(
-    (res) => {
-      const { responseCode, message, data } = res;
-      if (responseCode >= 200 && responseCode <= 299) {
-        return data;
-      }
-
-      enableErrorLogging &&
-        responseCode &&
-        logger({
-          responseCode: responseCode,
-          message: message,
-          location: "createGetIntent",
-        });
-      return null;
+  const data = await httpHandler({
+    url: url + GET_INTENT_ENDPOINT,
+    options,
+  }).then((res) => {
+    const { responseCode, message, data } = res;
+    if (responseCode >= 200 && responseCode <= 299) {
+      return data;
     }
-  );
+
+    enableErrorLogging &&
+      responseCode &&
+      logger({
+        responseCode: responseCode,
+        message: message,
+        location: "createGetIntent",
+      });
+    return null;
+  });
 
   return data;
 };
