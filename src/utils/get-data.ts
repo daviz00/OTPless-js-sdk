@@ -13,6 +13,7 @@ export const getData = async ({
   state,
   orderId,
   enableErrorLogging,
+  expiryTime
 }: GetIntentParams = {}) => {
   if (!getIsBrowser()) {
     return null;
@@ -20,7 +21,7 @@ export const getData = async ({
   const bodyParams = {
     loginMethod: WHATSAPP,
     state,
-    expiryTime: DEFAULT_EXPIRY_TIME,
+    expiryTime: expiryTime || DEFAULT_EXPIRY_TIME,
     redirectionURL,
     orderId,
   };

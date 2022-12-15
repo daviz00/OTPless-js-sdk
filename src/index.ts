@@ -34,7 +34,7 @@ const OTPlessSdk = ({
     return localStorage.getItem(STATE_LOCAL_STORAGE_KEY);
   };
 
-  const createGetIntentOnClick = ({ redirectionURL, orderId }: GetIntentParams = {}) => {
+  const createGetIntentOnClick = ({ redirectionURL, orderId, expiryTime }: GetIntentParams = {}) => {
     if (!getIsBrowser()) {
       return null;
     }
@@ -54,6 +54,7 @@ const OTPlessSdk = ({
         orderId,
         enableErrorLogging,
         appId,
+        expiryTime
       });
       const intent = data && data.intent;
       intent ? location.replace(intent) : (isClicked = false);

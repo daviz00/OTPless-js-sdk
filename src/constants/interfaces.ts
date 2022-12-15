@@ -8,6 +8,7 @@ export interface GetIntentParams extends SdkParams {
   redirectionURL?: string;
   orderId?: string;
   state?: string;
+  expiryTime?:number
 }
 
 export interface HttpHandlerParams {
